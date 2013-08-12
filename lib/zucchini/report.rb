@@ -41,7 +41,7 @@ class Zucchini::Report
 
     doc = Nokogiri::XML::Document.new()
 
-    root = Nokogiri::XML::Element.new('testsuites',doc)
+    root = Nokogiri::XML::Element.new('testsuites', doc)
     doc.add_child(root)
 
 
@@ -56,10 +56,25 @@ class Zucchini::Report
       suite['failures'] = f.stats[:failed].length
       suite['errors'] = (f.succeeded ? 0 : 1)
       suite['time'] = 0
-      suite['timestamp'] = Time.now.utc.iso8601.gsub!(/Z$/,'')
+      suite['timestamp'] = Time.now.utc.iso8601.gsub!(/Z$/, '')
 
       suite_props = Nokogiri::XML::Element.new('properties', doc)
       suite.add_child(suite_props)
+
+
+      # Report a single test case for whether or not the suite execution passed
+      test_case = Nokogiri::XML::Element.new('testcase', doc)
+      test_case['name'] = 'Feature Execution'
+      test_case['classname'] = f.name
+      test_case['time'] = 0
+
+      unless f.succeeded
+        error = Nokogiri::XML::Element.new('error', doc)
+        error['type'] = 'Uncaught Javascript Exception'
+        test_case.add_child(error)
+      end
+
+      suite.add_child(test_case)
 
 
       # Report test cases for failed tests
@@ -70,7 +85,7 @@ class Zucchini::Report
         test_case['time'] = 0
 
         error = Nokogiri::XML::Element.new('failure', doc)
-        error['message'] =  stat.diff[1]
+        error['message'] = stat.diff[1]
         error['type'] = 'Screenshot not matching'
         test_case.add_child(error)
 
