@@ -15,7 +15,11 @@ class Zucchini::Report
   def text
     @features.map do |f|
       failed_list = f.stats[:failed].empty? ? '' : "\n\nFailed:\n" + f.stats[:failed].map { |s| "   #{s.file_name}: #{s.diff[1]}" }.join
-      summary = f.stats.map { |key, set| "#{set.length.to_s} #{key}" }.join(', ')
+      if f.succeeded
+        summary = f.stats.map { |key, set| "#{set.length.to_s} #{key}" }.join(', ')
+      else
+        summary = "Feature execution failed with Javascript Exception\n"
+      end
 
       "#{f.name}:\n#{summary}#{failed_list}"
     end.join("\n\n")
