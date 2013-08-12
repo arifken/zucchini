@@ -14,8 +14,8 @@ class Zucchini::Report
 
   def text
     @features.map do |f|
-      failed_list = f.stats[:failed].empty? ? "" : "\n\nFailed:\n" + f.stats[:failed].map { |s| "   #{s.file_name}: #{s.diff[1]}" }.join
-      summary = f.stats.map { |key, set| "#{set.length.to_s} #{key}" }.join(", ")
+      failed_list = f.stats[:failed].empty? ? '' : "\n\nFailed:\n" + f.stats[:failed].map { |s| "   #{s.file_name}: #{s.diff[1]}" }.join
+      summary = f.stats.map { |key, set| "#{set.length.to_s} #{key}" }.join(', ')
 
       "#{f.name}:\n#{summary}#{failed_list}"
     end.join("\n\n")
@@ -34,60 +34,64 @@ class Zucchini::Report
   end
 
   def junit
-    builder = Nokogiri::XML::Builder.new do |xml|
-      xml.result {
-        xml.suites {
-        }
-        xml.duration 0
-        xml.keepLongStdio false
-      }
-    end
 
-    doc = builder.doc
-    suites = doc.search('//suites')[0]
+    doc = Nokogiri::XML::Document.new()
 
+    root = Nokogiri::XML::Element.new('testsuites',doc)
+    doc.add_child(root)
+
+
+    suite_id = 0
     @features.each do |f|
-      suite = Nokogiri::XML::Element.new('suite', doc)
-      suite.add_child("<file>#{@junit_path}</file>")
-      suite.add_child("<name>#{f.name}</name>")
-      suite.add_child("<duration>0</duration>")
-      suite.add_child("<timestamp>#{DateTime.now.iso8601}</timestamp>")
+      suite = Nokogiri::XML::Element.new('testsuite', doc)
+      suite['id'] = suite_id
+      suite['package'] = f.name
+      suite['hostname'] = ENV['ZUCCHINI_DEVICE']
+      suite['name'] = f.name
+      suite['tests'] = 1 + f.stats[:failed].length + f.stats[:passed].length
+      suite['failures'] = f.stats[:failed].length
+      suite['errors'] = (f.succeeded ? 0 : 1)
+      suite['time'] = 0
+      suite['timestamp'] = Time.now.utc.iso8601.gsub!(/Z$/,'')
 
-      feature_failed = !f.succeeded
-      feature_stdout = f.js_stdout
+      suite_props = Nokogiri::XML::Element.new('properties', doc)
+      suite.add_child(suite_props)
 
-      test_case = Nokogiri::XML::Element.new('case', doc)
-      test_case.add_child('<duration>0</duration>')
-      test_case.add_child("<className>#{doc.create_cdata(f.path)}</className>")
-      test_case.add_child("<testName>#{doc.create_cdata(f.name)}</testName>")
-      test_case.add_child('<skipped>false</skipped>')
-      test_case.add_child("<failedSince>#{feature_failed ? 2 : 0}</failedSince>")
-      test_case.add_child("<stdout>#{doc.create_cdata(feature_stdout)}</stdout>")
-      suite.add_child(test_case)
 
+      # Report test cases for failed tests
       f.stats[:failed].each do |stat|
-        test_case = Nokogiri::XML::Element.new('case', doc)
-        test_case.add_child('<duration>0</duration>')
-        test_case.add_child("<className>#{doc.create_cdata(stat.original_file_path)}</className>")
-        test_case.add_child("<testName>#{doc.create_cdata(stat.file_path)}</testName>")
-        test_case.add_child('<skipped>false</skipped>')
-        test_case.add_child('<failedSince>2</failedSince>')
-        test_case.add_child("<stdout>#{doc.create_cdata(stat.diff[1])}</stdout>")
+        test_case = Nokogiri::XML::Element.new('testcase', doc)
+        test_case['name'] = stat.original_file_path
+        test_case['classname'] = stat.file_path
+        test_case['time'] = 0
+
+        error = Nokogiri::XML::Element.new('failure', doc)
+        error['message'] =  stat.diff[1]
+        error['type'] = 'Screenshot not matching'
+        test_case.add_child(error)
+
         suite.add_child(test_case)
       end
 
+      # Report test cases for passed tests
       f.stats[:passed].each do |stat|
-        test_case = Nokogiri::XML::Element.new('case', doc)
-        test_case.add_child('<duration>0</duration>')
-        test_case.add_child("<className>#{doc.create_cdata(stat.original_file_path)}</className>")
-        test_case.add_child("<testName>#{doc.create_cdata(stat.file_path)}</testName>")
-        test_case.add_child('<skipped>false</skipped>')
-        test_case.add_child('<failedSince>0</failedSince>')
-        test_case.add_child("<stdout>#{doc.create_cdata(stat.diff[1])}</stdout>")
+        test_case = Nokogiri::XML::Element.new('testcase', doc)
+        test_case['name'] = stat.original_file_path
+        test_case['classname'] = stat.file_path
+        test_case['time'] = 0
         suite.add_child(test_case)
       end
 
-      suites << suite
+
+      stdout = (f.succeeded ? f.js_stdout : '')
+      stderr = (!f.succeeded ? f.js_stdout : '')
+
+      suite.add_child("<system-out>#{doc.create_cdata(stdout)}</system-out>")
+      suite.add_child("<system-err>#{doc.create_cdata(stderr)}</system-err>")
+
+      root.add_child(suite)
+
+      suite_id += 1
     end
 
     File.open(@junit_path, 'w+') { |f| f.write(doc.to_xml) }
