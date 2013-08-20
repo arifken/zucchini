@@ -17,7 +17,7 @@ class Zucchini::Report
       failed_list = f.stats[:failed].empty? ? '' : "\n\nFailed:\n" + f.stats[:failed].map { |s| "   #{s.file_name}: #{s.diff[1]}" }.join
       if f.succeeded
         summary = f.stats.map { |key, set| "#{set.length.to_s} #{key}" }.join(', ')
-      else
+      elsif f.js_exception
         summary = "\nFeature execution failed with Javascript Exception\n\n"
       end
 
@@ -54,7 +54,7 @@ class Zucchini::Report
       suite['name'] = f.name
       suite['tests'] = 1 + f.stats[:failed].length + f.stats[:passed].length
       suite['failures'] = f.stats[:failed].length
-      suite['errors'] = (f.succeeded ? 0 : 1)
+      suite['errors'] = (f.js_exception ? 1 : 0)
       suite['time'] = 0
       suite['timestamp'] = Time.now.utc.iso8601.gsub!(/Z$/, '')
 
@@ -68,7 +68,7 @@ class Zucchini::Report
       test_case['classname'] = f.name
       test_case['time'] = 0
 
-      unless f.succeeded
+      if f.js_exception
         error = Nokogiri::XML::Element.new('error', doc)
         error['type'] = 'Uncaught Javascript Exception'
         test_case.add_child(error)

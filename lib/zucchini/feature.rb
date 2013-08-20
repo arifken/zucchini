@@ -5,6 +5,7 @@ class Zucchini::Feature
   attr_accessor :stats
   attr_accessor :succeeded
   attr_accessor :js_stdout
+  attr_accessor :js_exception
 
   attr_reader :succeeded
   attr_reader :name
