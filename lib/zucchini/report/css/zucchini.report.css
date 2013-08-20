@@ -217,6 +217,11 @@ h3 {
   opacity: 1.0;
   background: transparent;
 }
+.screen p.stdout {
+    margin-top:34px;
+    z-index: auto;
+    opacity: 1.0;
+}
 .screen img {
   width: 320px;
   position: relative;

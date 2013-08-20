@@ -18,7 +18,7 @@ class Zucchini::Report
       if f.succeeded
         summary = f.stats.map { |key, set| "#{set.length.to_s} #{key}" }.join(', ')
       else
-        summary = "Feature execution failed with Javascript Exception\n"
+        summary = "\nFeature execution failed with Javascript Exception\n\n"
       end
 
       "#{f.name}:\n#{summary}#{failed_list}"
@@ -42,8 +42,8 @@ class Zucchini::Report
     doc = Nokogiri::XML::Document.new()
 
     root = Nokogiri::XML::Element.new('testsuites', doc)
-    doc.add_child(root)
 
+    doc.add_child(root)
 
     suite_id = 0
     @features.each do |f|
@@ -118,8 +118,8 @@ class Zucchini::Report
   end
 
   def generate!
-    log text
     html
+    log text
     junit
   end
 

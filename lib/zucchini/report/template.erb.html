@@ -18,7 +18,8 @@
   <section class="<%= i == 0 ? 'first' : '' %> feature">
     <h3><%= f.name %></h3>
     <div class="indicators">
-      <% if !f.stats[:failed].empty?  %><div class="failed"><%=  f.stats[:failed].length.to_s  %></div><% end %>
+      <% js_failures = (f.succeeded ? 0 : 1) %>
+      <% if !f.stats[:failed].empty? || !f.succeeded %><div class="failed"><%=  (f.stats[:failed].length + js_failures).to_s  %></div><% end %>
       <% if !f.stats[:pending].empty? %><div class="pending"><%= f.stats[:pending].length.to_s %></div><% end %>
       <% if !f.stats[:passed].empty?  %><div class="passed"><%=  f.stats[:passed].length.to_s  %></div><% end %>
     </div>
@@ -30,6 +31,13 @@
 
     <div class="viewport">
       <div class="surface">
+        <% unless f.succeeded %>
+        <dl class="failed screen">
+          <dt>Javascript Execution Failed</dt>
+          <dd><div><p><%= f.js_stdout %></p></div></dd>
+        </dl>
+        <% end %>
+
         <% f.screenshots.each do |s|  %>
         <% css_class = s.diff[0].to_s %>
         <dl class="<%= css_class %> <%= css_class == 'failed' ? 'expanded' :'' %> screen">
