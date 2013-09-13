@@ -1,7 +1,9 @@
 class Zucchini::Feature
+  include Zucchini::Compiler
+  include Zucchini::Device
+
   attr_accessor :path
   attr_accessor :device
-  attr_accessor :template
   attr_accessor :stats
   attr_accessor :succeeded
   attr_accessor :js_stdout
@@ -12,9 +14,9 @@ class Zucchini::Feature
 
   def initialize(path)
     @path         = path
+    @name         = File.basename(path)
     @device       = nil
     @succeeded    = false
-    @name         = File.basename(path)
     @js_stdout    = nil
     @js_exception = false
   end
@@ -23,9 +25,13 @@ class Zucchini::Feature
      "#{@path}/run_data"
   end
 
+  def run_path
+    "#{run_data_path}/Run\ 1"
+  end
+
   def unmatched_pending_screenshots
-    Dir.glob("#{@path}/pending/#{@device[:screen]}/[^0-9]*.png").map do |file|
-      screenshot = Zucchini::Screenshot.new(file, nil, true)
+    Dir.glob("#{@path}/pending/#{@device[:screen]}/[^0-9]*.png").sort.map do |file|
+      screenshot = Zucchini::Screenshot.new(file, nil, nil, true)
       screenshot.test_path = File.expand_path(file)
       screenshot.diff = [:pending, "unmatched"]
       screenshot
@@ -33,14 +39,18 @@ class Zucchini::Feature
   end
 
   def screenshots(process = true)
-    @screenshots ||= Dir.glob("#{run_data_path}/Run\ 1/*.png").map do |file|
-      screenshot = Zucchini::Screenshot.new(file, @device)
+    log = Zucchini::Log.new(run_path) if process && Zucchini::Log.exists?(run_path)
+    
+    @screenshots ||= Dir.glob("#{run_path}/*.png").sort.map do |file|
+      next unless Zucchini::Screenshot.valid?(file)
+
+      screenshot = Zucchini::Screenshot.new(file, @device, log)
       if process
         screenshot.mask
         screenshot.compare
       end
       screenshot
-    end + unmatched_pending_screenshots
+    end.compact + unmatched_pending_screenshots
   end
 
   def stats
@@ -50,39 +60,22 @@ class Zucchini::Feature
     end
   end
 
-  def compile_js
-    zucchini_base_path = File.expand_path(File.dirname(__FILE__))
-
-    feature_text = File.open("#{@path}/feature.zucchini").read.gsub(/\#.+[\z\n]?/,"").gsub(/\n/, "\\n")
-    File.open("#{run_data_path}/feature.coffee", "w+") { |f| f.write("Zucchini.run('#{feature_text}')") }
-
-    cs_paths  = "#{zucchini_base_path}/uia #{@path}/../support/screens"
-    cs_paths += " #{@path}/../support/lib" if File.exists?("#{@path}/../support/lib")
-    cs_paths += " #{run_data_path}/feature.coffee"
-
-    compile_cmd = "coffee -o #{run_data_path} -j #{run_data_path}/feature.js -c #{cs_paths}"
-    system compile_cmd
-    unless $?.exitstatus == 0
-      raise "Error compiling a feature file: #{compile_cmd}"
-    end
-  end
-
   def collect
     with_setup do
       `rm -rf #{run_data_path}/*`
-      compile_js
-
-      device_params = (@device[:name] == "iOS Simulator") ? "" : "-w #{@device[:udid]}"
 
       begin
-        out = `instruments #{device_params} -t "#{@template}" "#{Zucchini::Config.app}" -e UIASCRIPT "#{run_data_path}/feature.js" -e UIARESULTSPATH "#{run_data_path}" 2>&1`
+        out = `instruments #{device_params(@device)} \
+               -t "#{Zucchini::Config.template}" "#{Zucchini::Config.app}" \
+               -e UIASCRIPT "#{compile_js(@device[:orientation])}" \
+               -e UIARESULTSPATH "#{run_data_path}" 2>&1`
         puts out
         @js_stdout = out
         # Hack. Instruments don't issue error return codes when JS exceptions occur
-        #raise "Instruments run error" if (out.match /JavaScript error/) || (out.match /Instruments\ .{0,5}\ Error\ :/ )
         @js_exception = true if (out.match /JavaScript error/) || (out.match /Instruments\ .{0,5}\ Error\ :/ )
       ensure
         `rm -rf instrumentscli*.trace`
+        Zucchini::Log.parse_automation_log(run_path)
       end
     end
   end

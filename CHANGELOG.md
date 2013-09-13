@@ -1,3 +1,22 @@
+## 0.7.3 / 2013-08-20
+* Fix timing problems due to mechanic.js changing timeout to 0 - [@phatmann][]
+* Fix: When using `zucchini run -p`, the orientation-specific masks are not used - [@phatmann][], [#36][]
+* Fix: Tapping an element shows `(null).tap()` in the log - [@phatmann][], [#37][]
+* Ignore error-based UIAutomation screenshots - [@phatmann], [#38][]
+
+## 0.7.2 / 2013-08-19
+* Implement orientation specific masks - [@phatmann][], [#34][]
+* Archivable HTML reports - [@vaskas][], [#33][]
+* TAP-compatible output and reporting - [@vaskas][], [#32][]
+
+## 0.7.1 / 2013-08-12
+* Compile config file with ERB - [@vaskas][], [#30][]
+* Reduce gem size by not bundling specs with their sample setups
+
+## 0.7.0 / 2013-08-11
+* Integrate mechanic.js - [@vaskas][], [#29][]
+* Configure simulator with device and orientation - [@phatmann][], [#27][]
+
 ## 0.6.2 / 2013-08-07
 * Implement screen specific masks - [@phatmann][], [#24][]
 * Rearrange source files in a more conventional gem way - [@vaskas][], [#25][]
@@ -53,6 +72,15 @@
 [#24]: https://github.com/zucchini-src/zucchini/issues/24
 [#25]: https://github.com/zucchini-src/zucchini/issues/25
 [#26]: https://github.com/zucchini-src/zucchini/issues/26
+[#27]: https://github.com/zucchini-src/zucchini/issues/27
+[#29]: https://github.com/zucchini-src/zucchini/issues/29
+[#30]: https://github.com/zucchini-src/zucchini/issues/30
+[#32]: https://github.com/zucchini-src/zucchini/issues/32
+[#33]: https://github.com/zucchini-src/zucchini/issues/33
+[#34]: https://github.com/zucchini-src/zucchini/issues/34
+[#36]: https://github.com/zucchini-src/zucchini/issues/36
+[#37]: https://github.com/zucchini-src/zucchini/issues/37
+[#38]: https://github.com/zucchini-src/zucchini/issues/38
 
 [@Jaco-Pretorius]: https://github.com/Jaco-Pretorius
 [@NathanSudell]: https://github.com/NathanSudell

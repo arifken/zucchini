@@ -1,15 +1,22 @@
 require 'erb'
-require 'zucchini/report/view'
 require 'yaml'
 require 'nokogiri'
 require 'json'
 
+require 'zucchini/report/view'
+require 'zucchini/reporters/tap'
+require 'zucchini/reporters/html'
+
 class Zucchini::Report
 
-  def initialize(features, ci = false, html_path = '/tmp/zucchini_report.html', junit_path = '/tmp/zucchini_report.xml')
-    @features, @ci, @html_path, @junit_path = [features, ci, html_path, junit_path]
+  def initialize(features, ci = false, reports_dir)
+    FileUtils.mkdir_p(reports_dir)
 
-    generate!
+    @paths = {
+        :html => "#{reports_dir}/zucchini_report.html",
+        :tap  => "#{reports_dir}/zucchini.t"
+    }
+    generate(features, ci, @paths)
   end
 
   def text
@@ -117,15 +124,13 @@ class Zucchini::Report
 
   end
 
-  def generate!
-    html
-    log text
-    junit
+  def generate(features, ci, paths)
+    log Zucchini::Reporter::TAP.generate  features, paths[:tap]
+    log Zucchini::Reporter::HTML.generate features, paths[:html], ci
   end
 
-  def open
-    system "open #{@html_path}"
-  end
+  def open; system "open #{@paths[:html]}"; end
+
 
   def log(buf)
     puts buf
